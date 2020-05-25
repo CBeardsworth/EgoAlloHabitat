@@ -18,12 +18,13 @@ names(ras) <- "Category"
 dat <- read.csv("Data/Atlas2018egoallo.csv")%>%
     filter(!is.na(`medianEast`) & Day==T) %>%
     select(id ="Bird", sex = "Sex.x", mass = "Mass.25.07", x = "medianEast", y = "medianNort",
-           t = "RealTime", strategy = "Strat", score = "Diff")#%>%    filter(!id %in% c(1075,1095))
+           t = "RealTime", strategy = "Strat") 
+    
 dat$t <- as.POSIXct(dat$t)
-dat <- dat[dat$t > as.Date("2018-08-17"),]
+dat <- dat[dat$t > as.Date("2018-12-17"),]# & dat$t < as.Date("2018-10-17"),]
 dat <- dat[order(dat$id,dat$t),]
 dat_all <- dat %>% 
-    nest(-c(id,sex,strategy, mass,score)) # from purrr this nest command can be used to nest data into a list column
+    nest(-c(id,sex,strategy, month)) # from purrr this nest command can be used to nest data into a list column
 
 dat_all <- dat_all %>%
     mutate(trk = lapply(data, function(d){
@@ -49,7 +50,7 @@ dat_all %>%
 
 ##### Selection Model #####
 #OR run model then plot
-m1 <- dat_all %>%
+mData <- dat_all %>%
     mutate(steps = lapply(trk, function(x){ #create ssf variable in m1 using dat_all
         x %>% amt::track_resample(rate = minutes(5), #resample as differences in sampling rate between individuals
                                   tolerance = minutes(1)) %>%
@@ -64,16 +65,36 @@ m1 <- dat_all %>%
 
 #######
 
-m1 <- m1 %>% mutate(fit = map(steps, ~ amt::fit_issf(., case_ ~ habitat + sl_ +
-                                                         strata(step_id_))))
+m1 <- mData %>% mutate(fit = map(steps, ~ amt::fit_issf(., case_ ~ habitat +
+                                                         strata(step_id_)))) 
 
-order <- dat_all[order(dat_all$sex,dat_all$strategy),1:3]
-
-inds <- m1 %>% mutate(coef = map(fit, ~ broom::tidy(.x$model))) %>%
+#order <- dat_all[order(dat_all$sex,dat_all$strategy),1:3]
+AIC <- inds <- m1 %>% mutate(coef = map(fit, ~ broom::glance(.x$model))) %>%
     select(id, sex, strategy, coef) %>% 
     unnest_legacy %>%
+    mutate(id = factor(id))
+
+m2 <- mData %>% mutate(fit = map(steps, ~ amt::fit_issf(., case_ ~ habitat + 
+                                                         strata(step_id_)))) 
+
+#order <- dat_all[order(dat_all$sex,dat_all$strategy),1:3]
+AIC <- inds <- m1 %>% mutate(coef = map(fit, ~ broom::glance(.x$model))) %>%
+    select(id, sex, strategy, coef) %>% 
+    unnest_legacy %>%
+    mutate(id = factor(id))
+
+
+
+# %>% 
+    #group_by(sex, strategy, term)
+inds <- m1 %>% mutate(coef = map(fit, ~ broom::tidy(.x$model))) %>%
+    select(id, sex, strategy, coef) %>% 
+    unnest_legacy #%>%
     mutate(id = factor(id)) %>% 
-    group_by(sex, strategy, term)
+    #group_by(sex, strategy, term) %>%
+    summarize(mean = boot(data= m1, statistic= coef, R=1000))
+boot <- m1 %>% mutate(boot = map(fit, ~ boot(.x$model, coef, 1000)))
+
 
 groups <- m1 %>% mutate(coef = map(fit, ~ broom::tidy(.x$model))) %>%
     select(id, sex, strategy, coef) %>% 
@@ -92,7 +113,7 @@ d2 <- m1 %>% mutate(coef = map(fit, ~ broom::tidy(.x$model))) %>%
     mutate(id = factor(id)) %>% 
     group_by(term) %>%
     summarize(
-        mean = mean(estimate),
+        mean = boot(estimate, R=1000),
         ymin = mean - 1.96 * sd(estimate),
         ymax = mean + 1.96 * sd(estimate)
         )
