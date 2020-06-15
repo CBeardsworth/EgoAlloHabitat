@@ -10,10 +10,11 @@ library(cowplot)
 library(beepr)
 library(ggbeeswarm)
 library(MuMIn)
+options(na.action= "na.fail")
 library(lme4)
 #### Maze Task ####
 
-learning <- read.csv("mazeData.csv")
+learning <- read.csv("Data/mazeData.csv")
 
 # Did pheasants learn the maze task (errors)
 
@@ -35,7 +36,7 @@ ggplot(data=learning)+
 #ggsave("learning.png", units="cm", width=24, height=12, dpi = 600)
 
 ## Did birds vary in orientation strategy? ##
-orient<- read.csv("mazeRotationResults.csv")
+orient<- read.csv("Data/mazeRotationResults.csv")
 
 g1 <- glm(binStrat~Sex*Group, family=binomial(link="logit"),data=orient)
 summary(g1)
@@ -56,7 +57,7 @@ ggplot(data=orient, aes(x=Group, fill=Strat))+
     theme_classic() +
     theme(legend.position="none")
 
-ggsave("BarchartDiffsEgoAllo.jpeg", dpi=600, units="cm", width = 8, height = 10)
+#ggsave("BarchartDiffsEgoAllo.jpeg", dpi=600, units="cm", width = 8, height = 10)
 
 orient2 <- orient[orient$Group=="Experimental",]
 
@@ -77,7 +78,7 @@ rm(list = ls(all.names = TRUE))
 set.seed(106)
 
 # Habitat
-ras <- raster("habitat.grd")
+ras <- raster("Data/habitat.grd")
 
 #Bird Data
 
@@ -106,111 +107,77 @@ dat_all %>%
 
 #### Import bootstrapped model estimates ####
 
-bootData <- read.csv("bootData.csv")
+bootData <- read.csv("bootData.csv") #only habitat in models
+#bootData <- read.csv("bootData_incl_sl.csv") # with sl and log(sl) included in the models
 
 #### Bootstrap model estimates ####
-#set.seed(123)
-# bootData <- NULL
-# 
-# for(i in 1:1000){
-#     
-#     print(paste("iteration:", i)) #count iterations to give estimate of time left.
-#     
-#     ## Prepare Data ##
-#     mData <- dat_all %>%
-#         mutate(steps = lapply(trk, function(x){ #create ssf variable in m1 using dat_all
-#             x %>% amt::track_resample(rate = minutes(5), #resample as differences in sampling rate between individuals
-#                                       tolerance = minutes(1)) %>%
-#                 amt::filter_min_n_burst(min_n = 3) %>% # get minimum length of burst (30min)
-#                 amt::steps_by_burst() %>% #changes the data from a point representation into a step representation (step length, turn angles)
-#                 amt::random_steps(n_control = 10) %>% #default is n=10
-#                 amt::extract_covariates(ras, where = "end") %>% #extract (environmental) covariates at the endpoint of each step
-#                 mutate(habitat = factor(Category, levels=c(2,0,1))) #create landuse variable
-#             
-#         })) 
-#     
-#     ## Run Model ##
-#     tryCatch({
-#         m1 <- mData %>% mutate(fit = map(steps, ~ amt::fit_issf(., case_ ~ habitat + 
-#                                                                 strata(step_id_))))}, error=function(e){cat("ERROR:", conditionMessage(e), "\n")}) 
-#     
-#     ## Extract model coefficients ##
-#     inds <- m1 %>% mutate(coef = map(fit, ~ broom::tidy(.x$model))) %>%
-#         select(id, sex, strategy, coef) %>% 
-#         unnest_legacy %>%
-#         mutate(id = factor(id)) %>% 
-#         group_by(sex, strategy, term)
-#     
-#     inds$boot <- i # assign iteration number to new column
-#     bootData <- rbind(bootData, inds) # attach to dataset that includes coefs from all iterations
-#     
-#     if(i == 1000){
-#         beep() # tells you when the loop is over :)
-#     }}
+set.seed(123)
+bootData <- NULL
+
+for(i in 1:10){
+
+    print(paste("iteration:", i)) #count iterations to give estimate of time left.
+
+    ## Prepare Data ##
+    mData <- dat_all %>%
+        mutate(steps = lapply(trk, function(x){ #create ssf variable in m1 using dat_all
+            x %>% amt::track_resample(rate = minutes(5), #resample as differences in sampling rate between individuals
+                                      tolerance = minutes(1)) %>%
+                amt::filter_min_n_burst(min_n = 3) %>% # get minimum length of burst (30min)
+                amt::steps_by_burst() %>% #changes the data from a point representation into a step representation (step length, turn angles)
+                amt::random_steps(n_control = 10) %>% #default is n=10
+                amt::extract_covariates(ras, where = "end") %>% #extract (environmental) covariates at the endpoint of each step
+                mutate(habitat = factor(Category, levels=c(2,0,1)), log_sl_ = log(sl_)) #create landuse variable
+
+        }))
+
+    ## Run Model ##
+    tryCatch({
+        m1 <- mData %>% mutate(fit = map(steps, ~ amt::fit_issf(., case_ ~ habitat + log_sl_ +
+                                                                strata(step_id_), model=T)))}, error=function(e){cat("ERROR:", conditionMessage(e), "\n")})
+
+    ## Extract model coefficients ##
+    inds <- m1 %>% mutate(coef = map(fit, ~ broom::tidy(.x$model))) %>%
+        select(id, sex, strategy, p.value) %>%
+        unnest_legacy %>%
+        mutate(id = factor(id)) %>%
+        group_by(sex, strategy, term)
+
+    inds$boot <- i # assign iteration number to new column
+    bootData <- rbind(bootData, inds) # attach to dataset that includes coefs from all iterations
+
+    if(i == 1000){
+        beep() # tells you when the loop is over :)
+    }}
 
 ##### Calculate Coefficient Averages ####
 
 bootMean <- bootData %>%
-    group_by(id, mass, sex, strategy, term) %>% #get mean per individual, keep columns for sex strategy and term (habitat type) in the dataframe
+    group_by(id, sex, strategy, term) %>% #get mean per individual, keep columns for sex strategy and term (habitat type) in the dataframe
     summarize(mean= mean(estimate),
               low.ci= quantile(estimate, 0.025),
               high.ci= quantile(estimate, 0.975))
+#write.csv(bootData, "bootData_incl_sl.csv", row.names=F)
 
 #### Model selection (Woodland vs Open habitat). Criteria = lowest AIC 
 woodVopen <- bootMean[bootMean$term=="habitat0",]
 options(na.action="na.fail") #change for dredge function to run
 
 
-model1 <- glm(mean ~ sex + strategy, data=woodVopen)
-summary(model1)
-
-model2 <- glm(mean ~ sex, data=woodVopen)
-summary(model2) 
-
-model3 <- glm(mean ~ mass + strategy, data=woodVopen)
-summary(model3) 
-
-model4 <- glm(mean ~ mass,data=woodVopen)
-summary(model4) 
-
-model5 <- glm(mean ~ strategy, data=woodVopen)
-summary(model5)
-
-model6 <- glm(data=woodVopen, mean ~ 1)
-summary(model6) 
-
-output <- model.sel(model1,model2,model3, model4,model5,model6)
+model1 <- glm(mean ~ sex * strategy, data=woodVopen)
+output <- dredge(model1)
 output
-est.output<-model.avg(output, subset= delta < 2, revised.var = TRUE)
-summary(est.output)
+summary(glm(mean ~ 1, data=woodVopen))
+#est.output<-model.avg(output, subset= delta < 2, revised.var = TRUE)
+#summary(est.output)
 
 #### Model selection (Woodland vs Urban habitat) = lowest AIC
 woodVurban <- bootMean[bootMean$term=="habitat1",]
 
-model1 <- glm(mean ~ sex + strategy, data=woodVurban)
-summary(model1) #AIC =  16.608
-
-model2 <- glm(mean ~ sex, data=woodVurban)
-summary(model2) #AIC = 14.778
-
-model3 <- glm(mean ~ mass + strategy, data=woodVurban)
-summary(model3) # AIC = 13.146
-
-model4 <- glm(mean ~ mass,data=woodVurban)
-summary(model4) #AIC = 11.526 ###Best model
-
-model5 <- glm(mean ~ strategy, data=woodVurban)
-summary(model5) #AIC = 15.316
-
-model6 <- glm(data=woodVurban, mean ~ 1)
-summary(model6) #AIC = 15.529
-
-#model7 <- glm(mean ~ sex*mass, data=woodVurban) # since sex and mass are in the top models, ensure that a model together (including an interaction) will not influence the results. It does not as this is delta 3.98
-
-output <- model.sel(model1,model2,model3, model4,model5,model6)
-output
-est.output<-model.avg(output, subset= delta < 2, revised.var = TRUE)
-summary(est.output)
+model2 <- glm(mean ~ sex * strategy, data=woodVurban)
+dredge(model2)
+bestm2 <- glm(mean ~ sex, data=woodVurban)
+summary(bestm2)
 
 #### Plot Results ####
 
@@ -229,14 +196,16 @@ levels(bootMean$term) <- c("Open", "Urban") #rename for plot
 levels(bootMean$strategy) <- c("Allocentric", "Other") #rename for plot
 
 
-ggplot(data= bootMean, aes(x=mass, y=mean,col=strategy, shape=sex))+
+ggplot(data= bootMean, aes(x=sex, y=mean,col=strategy)) +
     facet_grid(.~term) +
-    geom_point(size=3, alpha=0.1)+
+    geom_boxplot()+
+    #geom_point(size=3, alpha=0.5, position= position_jitterdodge())+
     geom_pointrange(aes(ymin = low.ci, ymax = high.ci),
-                    size = 0.6, alpha=0.7) +
+                    size = 0.6, alpha=0.7, position=position_jitterdodge()) +
     scale_color_manual(values=c("royalblue", "gold3"))+
     theme_classic()+
     geom_hline(yintercept = 0, lty = 2) +
-    labs(x = "Mass (g)", y = "iSSA Estimate") 
+    labs(x = "Sex", y = "iSSA Estimate") 
 
 ggsave("iSSA_estimates.png", units="cm", width=16, height=14, dpi = 600)
+
