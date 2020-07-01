@@ -71,7 +71,7 @@ ggplot(data=orient2, aes(x=Diff, fill=Strat))+
     theme_classic() +
     theme(legend.position="none")
 
-ggsave("ExperimentalDiffsinErrors.jpeg", dpi=600, units="cm", width = 8, height = 10)
+#ggsave("ExperimentalDiffsinErrors.jpeg", dpi=600, units="cm", width = 8, height = 10)
 
 #### Habitat Selection ####
 rm(list = ls(all.names = TRUE)) 
@@ -107,48 +107,47 @@ dat_all %>%
 
 #### Import bootstrapped model estimates ####
 
-bootData <- read.csv("bootData.csv") #only habitat in models
-#bootData <- read.csv("bootData_incl_sl.csv") # with sl and log(sl) included in the models
+bootData <- read.csv("Data/bootData.csv") #only habitat in models
 
-#### Bootstrap model estimates ####
-set.seed(123)
-bootData <- NULL
-
-for(i in 1:10){
-
-    print(paste("iteration:", i)) #count iterations to give estimate of time left.
-
-    ## Prepare Data ##
-    mData <- dat_all %>%
-        mutate(steps = lapply(trk, function(x){ #create ssf variable in m1 using dat_all
-            x %>% amt::track_resample(rate = minutes(5), #resample as differences in sampling rate between individuals
-                                      tolerance = minutes(1)) %>%
-                amt::filter_min_n_burst(min_n = 3) %>% # get minimum length of burst (30min)
-                amt::steps_by_burst() %>% #changes the data from a point representation into a step representation (step length, turn angles)
-                amt::random_steps(n_control = 10) %>% #default is n=10
-                amt::extract_covariates(ras, where = "end") %>% #extract (environmental) covariates at the endpoint of each step
-                mutate(habitat = factor(Category, levels=c(2,0,1)), log_sl_ = log(sl_)) #create landuse variable
-
-        }))
-
-    ## Run Model ##
-    tryCatch({
-        m1 <- mData %>% mutate(fit = map(steps, ~ amt::fit_issf(., case_ ~ habitat + log_sl_ +
-                                                                strata(step_id_), model=T)))}, error=function(e){cat("ERROR:", conditionMessage(e), "\n")})
-
-    ## Extract model coefficients ##
-    inds <- m1 %>% mutate(coef = map(fit, ~ broom::tidy(.x$model))) %>%
-        select(id, sex, strategy, p.value) %>%
-        unnest_legacy %>%
-        mutate(id = factor(id)) %>%
-        group_by(sex, strategy, term)
-
-    inds$boot <- i # assign iteration number to new column
-    bootData <- rbind(bootData, inds) # attach to dataset that includes coefs from all iterations
-
-    if(i == 1000){
-        beep() # tells you when the loop is over :)
-    }}
+# #### Bootstrap model estimates ####
+# set.seed(123)
+# bootData <- NULL
+# 
+# for(i in 1:10){
+# 
+#     print(paste("iteration:", i)) #count iterations to give estimate of time left.
+# 
+#     ## Prepare Data ##
+#     mData <- dat_all %>%
+#         mutate(steps = lapply(trk, function(x){ #create ssf variable in m1 using dat_all
+#             x %>% amt::track_resample(rate = minutes(5), #resample as differences in sampling rate between individuals
+#                                       tolerance = minutes(1)) %>%
+#                 amt::filter_min_n_burst(min_n = 3) %>% # get minimum length of burst (30min)
+#                 amt::steps_by_burst() %>% #changes the data from a point representation into a step representation (step length, turn angles)
+#                 amt::random_steps(n_control = 10) %>% #default is n=10
+#                 amt::extract_covariates(ras, where = "end") %>% #extract (environmental) covariates at the endpoint of each step
+#                 mutate(habitat = factor(Category, levels=c(2,0,1)), log_sl_ = log(sl_)) #create landuse variable
+# 
+#         }))
+# 
+#     ## Run Model ##
+#     tryCatch({
+#         m1 <- mData %>% mutate(fit = map(steps, ~ amt::fit_issf(., case_ ~ habitat + log_sl_ +
+#                                                                 strata(step_id_), model=T)))}, error=function(e){cat("ERROR:", conditionMessage(e), "\n")})
+# 
+#     ## Extract model coefficients ##
+#     inds <- m1 %>% mutate(coef = map(fit, ~ broom::tidy(.x$model))) %>%
+#         select(id, sex, strategy, p.value) %>%
+#         unnest_legacy %>%
+#         mutate(id = factor(id)) %>%
+#         group_by(sex, strategy, term)
+# 
+#     inds$boot <- i # assign iteration number to new column
+#     bootData <- rbind(bootData, inds) # attach to dataset that includes coefs from all iterations
+# 
+#     if(i == 1000){
+#         beep() # tells you when the loop is over :)
+#     }}
 
 ##### Calculate Coefficient Averages ####
 
@@ -207,5 +206,5 @@ ggplot(data= bootMean, aes(x=sex, y=mean,col=strategy)) +
     geom_hline(yintercept = 0, lty = 2) +
     labs(x = "Sex", y = "iSSA Estimate") 
 
-ggsave("iSSA_estimates.png", units="cm", width=16, height=14, dpi = 600)
+#ggsave("iSSA_estimates.png", units="cm", width=16, height=14, dpi = 600)
 
