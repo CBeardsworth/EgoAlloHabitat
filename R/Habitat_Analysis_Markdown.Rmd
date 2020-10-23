@@ -1,0 +1,175 @@
+---
+title: "Analysis: Is habitat selection in the wild shaped by individual-level cognitive biases in orientation strategy?"
+author: "Beardsworth et al. 2020"
+output: html_document
+---
+### Import Libraries
+```{r import-libraries, message=F}
+
+library(MuMIn)
+library(ggplot2)
+library(lme4)
+library(extrafont)
+library(ggbeeswarm)
+options(scipen=999)
+```
+### Cognition Analysis
+```{r Cognition, message=F}
+
+learning <- read.csv("mazeData.csv")
+
+# Did pheasants learn the maze task (errors)
+
+m1 <- glmer(NumErrors ~ TrialNumber + Sex + Group + (1|Bird), data=learning, family = poisson(link=log), na.action="na.fail")
+summary(m1)
+output <- dredge(m1)
+output
+est.output<-model.avg(output, subset= delta < 2, revised.var = TRUE)
+summary(est.output)
+
+ggplot(data=learning)+
+    geom_beeswarm(aes(x=TrialNumber,y=NumErrors),size=0.005, cex=0.1)+
+    geom_smooth(aes(x=TrialNumber, y=NumErrors), col="grey4", method="lm")+
+    scale_x_continuous(expand=c(0,0),name="Trial Number", limits=c(0,9), breaks=seq(1,8,1))+
+    scale_y_continuous(name="Number of Errors", limits=c(-2,max(learning$NumErrors)),breaks=seq(0,45,5), expand=c(0,0))+
+    theme(text=element_text(family="Calibri"))+
+    guides(col=F)+
+    theme_classic()
+
+## Did birds vary in orientation strategy? ##
+
+orient<- read.csv("mazeRotationResults.csv")
+
+g1 <- glm(binStrat~Sex*Group, family=binomial(link="logit"),data=orient, na.action="na.fail")
+summary(g1)
+
+dredge(g1)
+#summary top model - treatment only
+summary(glm(binStrat~Group, family=binomial(link="logit"),data=orient))
+
+## Plots ##
+
+ggplot(data=orient, aes(x=Group, fill=Strat))+
+    geom_bar(position="dodge", size=0)+
+    scale_fill_manual(values=c("royalblue","gold3"))+
+    scale_y_continuous(expand=c(0,0), limits=c(0,50))+
+    #facet_grid(cols=vars(Group))+
+    xlab("Condition")+
+    ylab("Number of Birds") + 
+    theme_classic() +
+    theme(legend.position="none",text=element_text(family="Calibri"))
+
+orient2 <- orient[orient$Group=="Experimental",]
+
+ggplot(data=orient2, aes(x=Diff, fill=Strat))+
+    geom_histogram(breaks=seq(-10,30,by=1), size=0)+
+    scale_fill_manual(values=c("royalblue","gold3"))+
+    scale_y_continuous(expand=c(0,0), limits=c(0,8), breaks=seq(0,8,1))+
+    scale_x_continuous(expand=c(0,0), limits=c(-10,35), breaks=seq(-10,30,5))+
+    xlab("Difference in Errors \n(Probe Trial - Final Training Trial)")+
+    ylab("Number of Birds") + 
+    theme_classic() +
+    theme(legend.position="none",text=element_text(family="Calibri"))
+```
+
+### Habitat Selection analysis
+```{r Habitat-Selection, message=F} 
+
+# Habitat selection
+set.seed(106)
+
+all_RSS <- read.csv("habitatOrientation_coefs.csv") #coefs and logrss values for each ind
+all_RSS$strategy <- factor(all_RSS$strategy, levels= c("Egocentric", "Allocentric")) # change reference level to get allocentric estimates instead of mixed/ego birds. Clearer to explain. 
+all_avail <- read.csv("habitatOrientation_avail.csv") #availability of habitats for each ind
+
+# selection  (RSS)
+rss_data <- all_RSS[all_RSS$key=="log_RSS_wood2other",]
+rss_data <- merge(rss_data, all_avail, by = "id")
+rss_data$fig_strategy <- factor(rss_data$strategy, levels=c("Allocentric", "Egocentric"))
+
+ggplot(data= rss_data, aes(x=fig_strategy, y=mean, col=strategy)) +
+  geom_boxplot(show.legend = F, outlier.shape = NA)+
+  geom_pointrange(aes(ymin = lq, ymax = uq, alpha = inv_se), size=0.3,
+                  position=position_jitterdodge(), show.legend = F) +
+  scale_color_manual(values=c( "gold3","royalblue"))+
+  theme_classic()+
+  theme(text=element_text(family="Calibri"), axis.text.x = element_text(size=7))+
+  scale_x_discrete(labels=c("Allocentric" = "Allocentric", "Egocentric" = "Mixed/Egocentric"))+
+  geom_hline(yintercept = 0, lty = 2) +
+  labs(x = "Strategy", y = "log-RSS")
+
+
+habitat_glm <- glm(mean ~ sex * strategy + Avail_Habitat_other, data = rss_data, weight = inv_se, na.action="na.fail")
+habitat_output <- dredge(habitat_glm, fixed = c("Avail_Habitat_other"))
+habitat_output
+habitat_est.output <- model.avg(habitat_output, subset= delta < 2, revised.var = TRUE)
+summary(habitat_est.output)
+```
+
+##### What about that outlier that does not select for woodland?
+```{r, message=F}
+rss_data2 <- rss_data[rss_data$mean<0,]
+
+ggplot(data= rss_data2, aes(x=fig_strategy, y=mean, col=strategy)) +
+    geom_boxplot(show.legend = F, outlier.shape = NA)+
+    geom_pointrange(aes(ymin = lq, ymax = uq, alpha = inv_se), size=0.3,
+                    position=position_jitterdodge(), show.legend = F) +
+    scale_color_manual(values=c( "gold3","royalblue"))+
+    theme_classic()+
+    theme(text=element_text(family="Calibri"), axis.text.x = element_text(size=7))+
+    scale_x_discrete(labels=c("Allocentric" = "Allocentric", "Egocentric" = "Mixed/Egocentric"))+
+    geom_hline(yintercept = 0, lty = 2) +
+    labs(x = "Strategy", y = "log-RSS", tag="a")
+  
+habitat_glm <- glm(mean ~ sex * strategy + Avail_Habitat_other, data = rss_data2, weight = inv_se, na.action="na.fail")
+habitat_output <- dredge(habitat_glm, fixed = c("Avail_Habitat_other"))
+habitat_output
+habitat_est.output <- model.avg(habitat_output, subset= delta < 2, revised.var = TRUE)
+summary(habitat_est.output)
+
+
+# speed
+speed_data <- all_RSS[all_RSS$key%in% c("mean_speed_wood", "mean_speed_other"),]
+speed_data$key <- factor(speed_data$key, levels=c("mean_speed_wood", "mean_speed_other"), labels = c("Wood", "Other"))
+
+ggplot(data= speed_data, aes(x=sex, y=mean, col=key)) +
+  geom_boxplot()+
+  geom_pointrange(aes(ymin = lq, ymax = uq, alpha = inv_se),
+                  size = 0.3, position=position_jitterdodge(), show.legend = F) +
+  scale_color_manual(values=c("forestgreen", "purple"))+
+  theme_classic()+
+  theme(legend.position = "none",text=element_text(family="Calibri"))+
+  scale_y_continuous(limits=c(0,60), expand= c(0,0))+
+  guides(col = guide_legend(title="Habitat"))+
+  labs(x = "Sex", y = "Mean Displacement Distance (m/5min)")
+
+speed_glm <- glm(mean~ sex * strategy * key, data=speed_data, weight= inv_se,na.action="na.fail")
+speed_output <- dredge(speed_glm)
+speed_output #only 1 model
+speed_glm <- glm(mean~ sex * key, data=speed_data, weight= inv_se,na.action="na.fail")
+summary(speed_glm)
+
+#directionality
+
+dir_data <- all_RSS[all_RSS$key%in% c("cos_ta_", "habitat_start_cos_ta"),]
+dir_data$key <- factor(dir_data$key, levels=c("cos_ta_", "habitat_start_cos_ta"), labels = c("Wood", "Other"))
+
+
+ggplot(data= dir_data, aes(x=sex, y=mean, col=key)) +
+  geom_boxplot()+
+  geom_pointrange(aes(ymin = lq, ymax = uq, alpha = inv_se),
+                  size = 0.3, position=position_jitterdodge(), show.legend = F) +
+  scale_color_manual(values=c("forestgreen", "purple"))+
+  theme_classic()+
+  theme(legend.position = "none",text=element_text(family="Calibri"))+
+  guides(col = guide_legend(title="Habitat"))+
+  geom_hline(yintercept = 0, lty = 2) +
+  labs(x = "Sex", y = expression(paste("iSSA cos(turning angle) ", beta ," coefficient")))
+
+dir_glm <- glm(mean~ strategy * key * sex, data=dir_data, weights = inv_se,na.action="na.fail")
+dir_output <- dredge(dir_glm)
+dir_output
+dir_est.output<-model.avg(dir_output, subset= delta < 2, revised.var = TRUE)
+summary(dir_est.output)
+
+```
