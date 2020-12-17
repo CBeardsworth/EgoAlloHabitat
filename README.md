@@ -1,4 +1,4 @@
-# Repository for: *Is habitat selection in the wild shaped by individual-level cognitive biases in their orientation strategy?*
+# Repository for: *Is habitat selection in the wild shaped by individual-level cognitive biases in orientation strategy?*
 
 Christine E. Beardsworth, Mark A. Whiteside, Philippa R. Laker, Ran Nathan, Yotam Orchan, Sivan Toledo, Jayden O. van Horik, Joah R. Madden
 
