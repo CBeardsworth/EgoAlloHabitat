@@ -1,5 +1,9 @@
-# Pheasant orientation strategies and habitat selection
+# Repository for "Is habitat selection in the wild shaped by individual-level cognitive biases in their orientation strategy?"
 
-This code is presented to run the analysis for the paper "Is habitat selection in the wild shaped by individual-level cognitive biases in their orientation strategy?"
-Data can be found in /Data;
-Code and markdown html can be found in /R
+We have included a html R markdown document (/R/Habitat_Analysis_Markdown.html) to show the outputs of the analysis without the need to run the code. For those that might want to run the code themselves, we have included three R scripts (/R) and their accompanying datasets (/Data):
+
+Cognition analysis and figs.R = Run the cognition analysis for the first section of the manuscript and create the figures. For this, the datasets mazeData.csv (the learning trials) and mazeRotationResults.csv (the probe trial) are required. 
+
+iSSA analysis and bootstrapping.R = Run iSSA models and bootstrapping. This produces the datasets required for the next stage of analysis. For this code, the datasets habitat.grd (habitat information), atlas2018-strategy.csv (atlas data + id and strategy data for each bird) and FeederCoords2017_27700.csv (coordinates of feeder locations from 2017-2018) are required. The produced datasets are included therefore to run subsequent analyses, this code does not need to be run. To develop this code we relied heavily on the code included in the supplementary material of [Signer et al. (2019)](<https://doi.org/10.1002/ece3.4823>) as well as an [online tutorial](<https://bsmity13.github.io/log_rss/%C2%A0>) from Brian J. Smith for calculating log RSS.
+
+Habitat analysis and Figs.R = Run the statistical models for the final section of the manuscript and create the figures. For this code, the datasets produced in the previous R script are required (habitatOrientation_coefs.csv and habitatOrientation_avail.csv). We have included these datasets so users do not need to run the iSSA analysis and bootstrapping.R script themselves. 
