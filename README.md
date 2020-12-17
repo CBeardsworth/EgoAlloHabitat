@@ -1,8 +1,10 @@
 # Repository for "Is habitat selection in the wild shaped by individual-level cognitive biases in their orientation strategy?"
 
-Christine E. Beardsworth*, Mark A. Whiteside, Philippa R. Laker, Ran Nathan, Yotam Orchan, Sivan Toledo, Jayden O. van Horik, Joah R. Madden**
-* For any questions about the code please contact Christine at c.e.beardsworth@gmail.com
-** To use any data contained in this repository contact Joah at j.r.madden@exeter.ac.uk for permission.
+Christine E. Beardsworth, Mark A. Whiteside, Philippa R. Laker, Ran Nathan, Yotam Orchan, Sivan Toledo, Jayden O. van Horik, Joah R. Madden
+
+For any questions about the code please contact Christine at c.e.beardsworth@gmail.com
+
+To use any data contained in this repository contact Joah at j.r.madden@exeter.ac.uk for permission.
 
 In this repository, we have included a html R markdown document [Habitat_Analysis_Markdown.html](https://github.com/CBeardsworth/NavigationHabitat/blob/master/R/Habitat_Analysis_Markdown.html) to show the outputs of the analysis without the need to run the code. For those that might want to run the code themselves, we have included three R scripts ([/R](https://github.com/CBeardsworth/NavigationHabitat/blob/master/R)) and their accompanying datasets ([/Data](https://github.com/CBeardsworth/NavigationHabitat/blob/master/Data)):
 
