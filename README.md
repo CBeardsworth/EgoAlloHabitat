@@ -6,7 +6,7 @@ For any questions about the code please contact Christine at c.e.beardsworth@gma
 
 To use any data contained in this repository contact Joah at j.r.madden@exeter.ac.uk for permission.
 
-In this repository, we have included a run-through of the R analysis [here] (https://cbeardsworth.github.io/Pheasant_OrientStrat_Habitat/) to show the outputs of the analysis without the need to run the code. For those that might want to run the code themselves, we have included three R scripts ([/R](https://github.com/CBeardsworth/NavigationHabitat/blob/master/R)) and their accompanying datasets ([/Data](https://github.com/CBeardsworth/NavigationHabitat/blob/master/Data)):
+In this repository, we have included a run-through of the R analysis [here](https://cbeardsworth.github.io/Pheasant_OrientStrat_Habitat/) to show the outputs of the analysis without the need to run the code. For those that might want to run the code themselves, we have included three R scripts ([/R](https://github.com/CBeardsworth/NavigationHabitat/blob/master/R)) and their accompanying datasets ([/Data](https://github.com/CBeardsworth/NavigationHabitat/blob/master/Data)):
 
 Cognition analysis and figs.R = Run the cognition analysis for the first section of the manuscript and create the figures. For this, the datasets mazeData.csv (the learning trials) and mazeRotationResults.csv (the probe trial) are required. 
 
