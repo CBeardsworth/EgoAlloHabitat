@@ -2,6 +2,8 @@
 
 Christine E. Beardsworth, Mark A. Whiteside, Philippa R. Laker, Ran Nathan, Yotam Orchan, Sivan Toledo, Jayden O. van Horik, Joah R. Madden
 
+[![DOI](https://zenodo.org/badge/264479955.svg)](https://zenodo.org/badge/latestdoi/264479955)
+
 For any questions about the code please contact Christine at c.e.beardsworth@gmail.com
 
 To use any data contained in this repository contact Joah at j.r.madden@exeter.ac.uk for permission.
